@@ -91,7 +91,12 @@ server_app<-function(){
 
       ### Save output
       message("save outputs")
-      writexl::write_xlsx(x = E$data,
+      writexl::write_xlsx(x = list(
+        E$data,
+        E$gain_led_table,
+        E$coeffs,
+        E$ksv
+      ),
                           path = file.path(file.path(
                             E$dir,
                             paste0(E$Lot, "_coefficient_summary.xlsx")
