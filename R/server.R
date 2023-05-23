@@ -1,4 +1,4 @@
-server_app<-function(){
+server_app <- function() {
   require(shiny)
   require(seastar)
   require(foam)
@@ -11,19 +11,26 @@ server_app<-function(){
   library(fs)
   library(readxl)
   library(plates)
-
+  
   shinyServer(function(input, output) {
     observeEvent(input$dirsel, {
       E <- new.env()
       E$dir <- choose.dir()
       E$data <- barval::grab_validation_data(E$dir)
-
-
+      
+      
       E$median_target <- median(E$data$pH_target)
       E$Lot <- unique(E$data$Lot)
       ## KSV
       # message("ksv data")
-      E$ksv <- filter(E$data, !is.na(KSV)) %>%
+      E$ksv <- filter(E$data,!is.na(KSV)) %>%
+        group_by(O2_target) %>% 
+        mutate(modz=barval::modified_z_score(KSV),
+               cut = barval::modz_cuts(KSV),
+               use = modz<=cut
+               ) %>% 
+        ungroup() %>% 
+        filter(use) %>% 
         summarize(
           .,
           AVG_KSV = mean(KSV),
@@ -34,22 +41,17 @@ server_app<-function(){
       ### GAIN
       # message("profile gain data")
       gain_lm <- lm(Gain ~ pH_target, data = E$data)
-
-      SUM_LM <- summary(gain_lm)
-
-      E$coeffs <- data.frame(
-        vars = c("rsquared", "slope",
-                 "intercep", "Gain"),
-        val = c(
-          round(SUM_LM$r.squared,
-                6),
-          round(coef(gain_lm)[2], 6),
-          round(coef(gain_lm)[1],
-                6),
-          (E$median_target * coef(gain_lm)[2]) + coef(gain_lm)[1]
-        )
+      
+      
+      E$coeffs <- tibble(
+        target = median(unique(E$data$pH_target)),
+        slope = round(coef(gain_lm)[2], 6),
+        intercept = round(coef(gain_lm)[1], 6),
+        Gain = (target * slope) + intercept,
+        rsquared = round(summary(gain_lm)$r.squared, 6)
       )
-
+      
+      
       E$plot$pH_lm <-
         filter(E$data, is.na(KSV)) %>%
         ggplot(., aes(pH_target, Gain)) +
@@ -60,21 +62,21 @@ server_app<-function(){
           label = unique(E$data$raw$Lot),
           subtitle = paste0(
             "Rsquared: ",
-            round(SUM_LM$r.squared,
-                  6),
+            E$coeffs$rsquared,
             "\n",
             "eq: Gain = (Target * ",
-            round(coef(gain_lm)[2],
-                  6),
+            E$coeffs$slope,
             ") +",
-            round(coef(gain_lm)[1], 6)
+            E$coeffs$intercept
           )
         )
+      
+      
       ##### LED & Gain table
       message("set tables")
       E$gain_led_table <-
-        filter(E$data,!is.na(pH_target)) %>%
-        filter(., !is.na(Gain)) %>%
+        filter(E$data, !is.na(pH_target)) %>%
+        filter(.,!is.na(Gain)) %>%
         group_by(., pH_target) %>%
         summarise(
           .,
@@ -88,19 +90,19 @@ server_app<-function(){
           Gain_plus3SD = Gain_AVG + (3 *
                                        Gain_SD)
         )
-
+      
       ### Save output
       message("save outputs")
-      writexl::write_xlsx(x = list(
-        E$data,
-        E$gain_led_table,
-        E$coeffs,
-        E$ksv
-      ),
-                          path = file.path(file.path(
-                            E$dir,
-                            paste0(E$Lot, "_coefficient_summary.xlsx")
-                          )))
+      writexl::write_xlsx(
+        x = list(E$data,
+                 E$gain_led_table,
+                 E$coeffs,
+                 E$ksv),
+        path = file.path(file.path(
+          E$dir,
+          paste0(E$Lot, "_coefficient_summary.xlsx")
+        ))
+      )
       ggsave(
         file.path(E$dir, "coeffplot.png"),
         E$plot$pH_lm,
