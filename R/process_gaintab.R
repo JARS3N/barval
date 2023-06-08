@@ -34,7 +34,7 @@ process_gaintab<-function(k){
            Inst = inst,
            source= "gaintab",
            Lot = substr(file,1,6),
-           sn = gsub("^.{7}|_GAINTAB_.+$","",file)
+           sn = gsub("^.{7}|_GAIN.+$","",file)
            )
 
   # adjust output for the determined assay (gain/ksv)
