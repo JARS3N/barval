@@ -23,37 +23,40 @@ server_app <- function() {
       E$Lot <- unique(E$data$Lot)
       ## KSV
       # message("ksv data")
-      E$ksv <- filter(E$data,!is.na(KSV)) %>%
-        group_by(O2_target) %>%
-        mutate(modz=barval::modified_z_score(KSV),
-               cut = barval::modz_cuts(KSV),
-               use = modz<=cut
-               ) %>%
-        ungroup() %>%
-        filter(use) %>%
-        summarize(
-          .,
-          AVG_KSV = mean(KSV),
-          AVG_F0 = mean(F0),
-          Median_ksv = median(KSV),
-          Median_F0 = median(F0),
-          O2_target = median(O2_target)
-        )
+     E$ksv <- tryCatch({
+        filter(E$data,is.na(KSV)) %>%
+              group_by(O2_target) %>%
+              mutate(
+                modz = modified_z_score(KSV),
+                cut = modz_cuts(KSV),
+                use = modz <= cut
+              ) %>%
+              ungroup() %>%
+              filter(use) %>%
+              summarize(
+                AVG_KSV = mean(KSV, na.rm = TRUE),
+                AVG_F0 = mean(F0, na.rm = TRUE),
+                Median_ksv = median(KSV, na.rm = TRUE),
+                Median_F0 = median(F0, na.rm = TRUE),
+                O2_target = median(O2_target, na.rm = TRUE)
+              )}, error = function(e) NULL)
       ### GAIN
       # message("profile gain data")
-      gain_lm <- lm(Gain ~ pH_target, data = E$data)
+      gain_lm <- tryCatch({lm(Gain ~ pH_target, data = E$data)},
+                           error = function(e) NULL)
 
 
-      E$coeffs <- tibble(
+      E$coeffs <- tryCatch({tibble(
         target = median(unique(E$data$pH_target)),
         slope = round(coef(gain_lm)[2], 6),
         intercept = round(coef(gain_lm)[1], 6),
         Gain = (target * slope) + intercept,
         rsquared = round(summary(gain_lm)$r.squared, 6)
-      )
+      )}, error = function(e) NULL)
 
 
       E$plot$pH_lm <-
+        tryCatch({
         filter(E$data, is.na(KSV)) %>%
         ggplot(., aes(pH_target, Gain)) +
         geom_point(alpha = 0.2) +
@@ -70,12 +73,13 @@ server_app <- function() {
             ") +",
             E$coeffs$intercept
           )
-        )
+        )}, error = function(e) NULL)
 
 
       ##### LED & Gain table
       message("set tables")
       E$gain_led_table <-
+        tryCatch({
         filter(E$data, !is.na(pH_target)) %>%
         filter(.,!is.na(Gain)) %>%
         group_by(., pH_target) %>%
@@ -90,15 +94,16 @@ server_app <- function() {
             (3 * Gain_SD),
           Gain_plus3SD = Gain_AVG + (3 *
                                        Gain_SD)
-        )
+        )}, error = function(e) NULL)
 
       ### Save output
-      message("save outputs")
-      writexl::write_xlsx(
-        x = list(data=E$data,
+        xlist<-  list(data=E$data,
                  Gain_table=E$gain_led_table,
                  pH_coefficients = E$coeffs,
-                 E$ksv),
+                 E$ksv)
+      message("save outputs")
+      writexl::write_xlsx(
+        x = Filter(Negate(is.null), xlist),
         path = file.path(file.path(
           E$dir,
           paste0(E$Lot, "_coefficient_summary.xlsx")
