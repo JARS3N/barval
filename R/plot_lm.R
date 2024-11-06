@@ -12,7 +12,7 @@ plot_lm <- function(data, coefs) {
         se = FALSE,
         color = "blue"
       ) +  # Overall linear fit
-      theme_minimal() +
+      theme_bw() +
       labs(x = "pH Target", y = "Gain") +
       ggtitle(
         label = unique(data$Lot),
