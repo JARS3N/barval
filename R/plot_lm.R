@@ -1,18 +1,21 @@
 plot_lm<-function(data,coefs){
 #takes E$data as argument
 tryCatch({
-            filter(data, !is.na(KSV)) %>%
-              ggplot(aes(pH_target, Gain)) +
-              geom_point(alpha = 0.2) +
-              geom_smooth(method = "lm") +
-              theme_bw() +
-              ggtitle(
-                label = unique(data$Lot),
-                subtitle = paste0(
-                  "Rsquared: ", coefs$rsquared, "\n",
-                  "eq: Gain = (Target * ", coefs$slope, ") + ",
-                  coefs$intercept
-                )
+data %>%
+  ggplot(aes(x = as.factor(pH_target), y = Gain)) +  # Treat pH_target as discrete
+  geom_violin(fill = "lightblue", alpha = 0.3) +  # Violin plot for distribution
+  geom_point(position = position_jitter(width = 0.05), alpha = 0.33) +  # Overlayed points with jitter
+  geom_smooth(aes(group = 1), method = "lm", se = FALSE, color = "blue") +  # Overall linear fit
+  theme_minimal() +
+  labs(x = "pH Target", y = "Gain") +
+  ggtitle(
+    label = unique(data$Lot),
+    subtitle = paste0(
+      "Rsquared: ", coefs$rsquared, "\n",
+      "eq: Gain = (Target * ", coefs$slope, ") + ",
+      coefs$intercept
+    )
+  )
               )
           }, error = function(e) NULL)
 }
