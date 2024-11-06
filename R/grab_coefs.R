@@ -3,7 +3,7 @@ grab_coefs<-function(model,target){
 # target=E$gain$pH_target
   tryCatch({
             tibble(
-              target = median(unique(data$pH_target)),
+              target = median(unique(target)),
               slope = round(coef(gain_lm)[2], 6),
               intercept = round(coef(gain_lm)[1], 6),
               Gain = (target * slope) + intercept,
