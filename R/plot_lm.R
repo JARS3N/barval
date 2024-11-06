@@ -7,7 +7,7 @@ tryCatch({
               geom_smooth(method = "lm") +
               theme_bw() +
               ggtitle(
-                label = unique(E$data$Lot),
+                label = unique(data$Lot),
                 subtitle = paste0(
                   "Rsquared: ", coefs$rsquared, "\n",
                   "eq: Gain = (Target * ", coefs$slope, ") + ",
