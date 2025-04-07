@@ -7,7 +7,6 @@ Maintainer: jars3n <jas3n@gmail.com>
 Description: sensor validation coefficient generation
 Imports:
       shiny,
-      seastar,
       foam,
       dplyr,
       ggplot2,
