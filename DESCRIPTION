@@ -14,7 +14,8 @@ Imports:
       writexl,
       fs,
       readxl,
-      plates
+      plates,
+      openxlsx
 License: closed
 Encoding: UTF-8
 LazyData: true
